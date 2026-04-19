@@ -3,24 +3,27 @@ import { Text, View, StyleSheet, ImageBackground, TouchableOpacity, FlatList } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 
+// 1. Define the shape of your flyer data
+interface Flyer {
+  _id: string;
+  title: string;
+  dateOfEvent: string; // Expected format: YYYY-MM-DD
+  location: string;
+}
+
 export default function CalendarScreen() {
-  const [viewMode, setViewMode] = useState('month'); // 'month' or 'week'
-  const [flyers, setFlyers] = useState([]);
-  const [markedDates, setMarkedDates] = useState({});
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  
+  // 2. Explicitly type the state as an array of Flyer objects
+  const [flyers, setFlyers] = useState<Flyer[]>([]);
 
   useEffect(() => {
     const fetchDates = async () => {
       try {
         const response = await fetch('https://calevent-db-mkxw5.ondigitalocean.app/api/flyers');
-        const data = await response.json();
-        
-        let marks = {};
-        data.forEach(flyer => {
-          if (flyer.dateOfEvent) {
-            marks[flyer.dateOfEvent] = { marked: true, dotColor: '#3F84E5' };
-          }
-        });
-        setMarkedDates(marks);
+        // 3. Explicitly type the incoming JSON
+        const data: Flyer[] = await response.json();
+        setFlyers(data);
       } catch (e) {
         console.error("Error fetching flyers:", e);
       }
@@ -28,28 +31,37 @@ export default function CalendarScreen() {
     fetchDates();
   }, []);
 
-  // filter flyers for weekly usage
+  // 4. Use derived state for markedDates (Removes need for separate state)
+  const markedDates = useMemo(() => {
+    const marks: Record<string, { marked: boolean; dotColor: string }> = {};
+    flyers.forEach((flyer) => {
+      if (flyer.dateOfEvent) {
+        marks[flyer.dateOfEvent] = { marked: true, dotColor: '#3F84E5' };
+      }
+    });
+    return marks;
+  }, [flyers]);
+
+  // 5. Logic fix: Use dateOfEvent consistently
   const weeklyFlyers = useMemo(() => {
     const today = new Date();
     const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
 
-    return flyers.filter(flyer => {
-      const eventDate = new Date(flyer.date);
+    return flyers.filter((flyer) => {
+      const eventDate = new Date(flyer.dateOfEvent);
       return eventDate >= today && eventDate <= nextWeek;
     });
   }, [flyers]);
-
 
   return (
     <View style={styles.container}>
       <ImageBackground source={require('../assets/corktexture.png')} style={styles.backgroundImage}>
         <SafeAreaView style={styles.topLeftContainer}>
           
-          {/*dropdown*/}
           <View style={styles.headerRow}>
             <Text style={styles.headerText}>
-                {viewMode === 'month' ? "📅 Month View" : "🗓️ Week View"}
+              {viewMode === 'month' ? "📅 Month View" : "🗓️ Week View"}
             </Text>
             <TouchableOpacity 
               style={styles.toggleButton} 
@@ -62,7 +74,6 @@ export default function CalendarScreen() {
           {viewMode === 'month' ? (
             <View style={[styles.calendarWrapper, styles.calendarShadow]}>
               <Calendar 
-              key={Object.keys(markedDates).length}
                 markedDates={markedDates}
                 markingType={'dot'}
                 theme={{
@@ -77,16 +88,18 @@ export default function CalendarScreen() {
               />
             </View>
           ) : (
-            /* week view!*/
-             <View style={styles.weekContainer}>
+            <View style={styles.weekContainer}>
               <FlatList
                 data={weeklyFlyers}
                 keyExtractor={(item) => item._id}
                 renderItem={({ item }) => (
                   <View style={styles.weekItem}>
                     <View style={styles.dateTab}>
-                      <Text style={styles.dayName}>{new Date(item.dateOfEvent).toLocaleDateString('en-US', {weekday: 'short'})}</Text>
-                      <Text style={styles.dayNum}>{item.date.split('-')[2]}</Text>
+                      <Text style={styles.dayName}>
+                        {new Date(item.dateOfEvent).toLocaleDateString('en-US', { weekday: 'short' })}
+                      </Text>
+                      {/* Using slice to get the DD part of YYYY-MM-DD */}
+                      <Text style={styles.dayNum}>{item.dateOfEvent.split('-')[2]}</Text>
                     </View>
                     <View style={styles.eventInfo}>
                       <Text style={styles.eventTitle}>{item.title}</Text>
@@ -94,7 +107,7 @@ export default function CalendarScreen() {
                     </View>
                   </View>
                 )}
-                 ListEmptyComponent={<Text style={styles.emptyText}>No events this week!</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>No events this week!</Text>}
               />
             </View>
           )}
@@ -103,7 +116,6 @@ export default function CalendarScreen() {
     </View>
   );
 }
-
 
 
 const styles = StyleSheet.create({
