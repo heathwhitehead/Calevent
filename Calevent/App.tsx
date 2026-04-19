@@ -1,19 +1,17 @@
 import React from 'react';
-import { Text, View, StyleSheet, StatusBar, useColorScheme, ImageBackground } from 'react-native';
+import { AuthProvider } from './src/context/AuthContext'; // Double check this path!
+import { TabNavigation } from './src/screens/Tabs'; // Or wherever your Tabs are
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Import Navigator
-import { TabNavigation } from './src/screens/Tabs'; 
-
-
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <TabNavigation />
+        {/* The Provider MUST wrap the Navigation */}
+        <AuthProvider>
+          <TabNavigation />
+        </AuthProvider>
       </NavigationContainer>
     </SafeAreaProvider>
   );
